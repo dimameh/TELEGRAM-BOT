@@ -152,7 +152,11 @@ bot.onText(/\/start/, function (msg, match) {
   GreetingsReply(msg)   
 });
 
-bot.sendMessage(ADMIN_ID, 'Бот работает')
+try {
+  bot.sendMessage(ADMIN_ID, 'Бот работает')
+} catch (err) {
+  console.log(err)
+}
 
 bot.on('message', msg => {
   let answer = msg.text
