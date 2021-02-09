@@ -24,11 +24,11 @@ const
   (type: ТИП) - ВЫБИРАЕМ ТИП ДАННЫХ ДЛЯ СТОЛБЦА 
   Questions:
     -- id (type: autonumber)
-    -- user_id (type: number)
+    -- username (type: single line text)
     -- question (type: longtext)
   User data: 
     -- id (type: autonumber)
-    -- user_id (type: number)
+    -- username (type: single line text)
     -- data (type: longtext)
 */
 
@@ -67,9 +67,9 @@ const bot = new TelegramBot(TOKEN, {
 let EnrollingNow = []
 let QuestioningNow = []
 
-function cleanUserStage(chat) {
-  EnrollingNow = EnrollingNow.filter(el => el !== chat)
-  QuestioningNow = QuestioningNow.filter(el => el !== chat)
+function cleanUserStage(username) {
+  EnrollingNow = EnrollingNow.filter(el => el !== username)
+  QuestioningNow = QuestioningNow.filter(el => el !== username)
 }
 
 const MessageReplys = new Map()
@@ -95,8 +95,18 @@ __________________
 
 MessageReplys.set(ChatStates.DownloadProgram, {        
 text: `
-PDF-файл с программой курса.
-(информация о преимуществах курса)
+Преимущества курса:
+
+Лучшие эксперты 
+преподаватели курса практикующие эксперты, блогеры, предприниматели и маркетологи, которые ведут TikTok и знаю все фишки продвижения и создания профессионального контента с помощью одного только телефона, а также делают видео с миллионными просмотрами и продюсируют аккаунты в TikTok.
+
+
+Блогеры миллионники
+На курсе вы познакомитесь с блогерами миллионниками, поработаете под их надзором, получите ценный опыт, который поможет в дальнейшем самостоятельно создавать профессиональный продающий контент в TikTok
+
+
+"Живое" сопровождение
+Во время обучения каждый слушатель будет получать “живую” обратную связь от экспертов по выполненной работе. Помимо этого будут проводиться очные практические работы во время которых слушатели будут лично работать со своими менторами и выполнять индивидуальные задания по созданию контента и монтажу.
 
 Спикеры курса подготовили для вас бесплатный чек-лист “Как создавать продающий контент в TikTok”
 
@@ -153,54 +163,56 @@ bot.onText(/\/start/, function (msg, match) {
 });
 
 try {
-  bot.sendMessage(ADMIN_ID, 'Бот работает')
+  if (ADMIN_ID !== -1) {
+    bot.sendMessage(ADMIN_ID, 'Бот работает')
+  }
 } catch (err) {
   console.log(err)
 }
 
 bot.on('message', msg => {
   let answer = msg.text
-  let chat = GetChat(msg)
+  let username = '@' + GetUsername(msg)
   switch (answer) {
     case 'start': // 1 Здравствуйте { скачать программу курса, задать вопрос, записаться на курс }
       GreetingsReply(msg)
-      cleanUserStage(chat)
+      cleanUserStage(username)
       break;
     case ChatStates.DownloadProgram: // 2 Скачать программу курса { получить бесплытный чек-лист, записаться на курс }
       DownloadProgramReply(msg)
-      cleanUserStage(chat)
-      break;
+      cleanUserStage(username)
+      break
     case ChatStates.Question: // 3 Задать вопрос { скачать программу курса, записаться на курс }
       QuestionsReply(msg)
-      cleanUserStage(chat)
+      cleanUserStage(username)
       
-      if (QuestioningNow.indexOf(chat) === -1) //На всякий случай проверяем что он уже не находится в чате
-        QuestioningNow.push(chat)
-      break;
+      if (QuestioningNow.indexOf(username) === -1) //На всякий случай проверяем что он уже не находится в чате
+        QuestioningNow.push(username)
+      break
     case ChatStates.Enroll: // 4 Записаться на курс { скачать программу курса }
       EnrollReply(msg)
 
-      cleanUserStage(chat)
+      cleanUserStage(username)
       
-      if (EnrollingNow.indexOf(chat) === -1) //На всякий случай проверяем что он уже не находится в чате
-        EnrollingNow.push(chat)
-      break;
+      if (EnrollingNow.indexOf(username) === -1) //На всякий случай проверяем что он уже не находится в чате
+        EnrollingNow.push(username)
+      break
     case ChatStates.GetChecklist: // 5 Получить чеклист { задать вопрос, записаться на курс }
       GetChecklistReply(msg)
-      cleanUserStage(chat)
-      break;
+      cleanUserStage(username)
+      break
     default:
-      if (EnrollingNow.indexOf(chat) !== -1) {
+      if (EnrollingNow.indexOf(username) !== -1) {
         //Берем данные и кладем в БД
-        UploadToAirtable(chat, answer, AirtableDataTypes.Data)
+        UploadToAirtable(username, answer, AirtableDataTypes.Data)
         DownloadProgramReply(msg)
       }
-      if (QuestioningNow.indexOf(chat) !== -1) {
+      if (QuestioningNow.indexOf(username) !== -1) {
         //Если вопрос то кладем в таблицу вопросов
-        UploadToAirtable(chat, answer, AirtableDataTypes.Question)
+        UploadToAirtable(username, answer, AirtableDataTypes.Question)
       }
-      cleanUserStage(chat)
-      break;
+      cleanUserStage(username)
+      break
   }
 });
 
@@ -236,6 +248,7 @@ function DownloadProgramReply(msg) {
   };
   let chat = GetChat(msg);
   bot.sendMessage(chat, arr.text, options)
+  bot.sendDocument(chat, './files/ПРОГРАММА КУРСА.pdf')
 }
 
 // 3 Задать вопрос { скачать программу курса, записаться на курс }
@@ -281,14 +294,15 @@ function GetChecklistReply(msg) {
   };
   let chat = GetChat(msg);
   bot.sendMessage(chat, arr.text, options)
+  bot.sendDocument(chat, './files/Чек-лист.pdf')
 }
 
 /////////////////
-function UploadToAirtable(userId, message, type) {
+function UploadToAirtable(username, message, type) {
   if (type === AirtableDataTypes.Question) {
     base('Questions').create([{
       fields: {
-        user_id: userId,
+        username: username,
         question: message
       }  
     }], function(err, records) {
@@ -302,7 +316,7 @@ function UploadToAirtable(userId, message, type) {
   if (type === AirtableDataTypes.Data) {
     base('User data').create([{
       fields: {
-        user_id: userId,
+        username: username,
         data: message
       }  
     }], function(err, records) {
@@ -315,5 +329,9 @@ function UploadToAirtable(userId, message, type) {
 }
 
 function GetChat(msg) {
-    return chat = msg.hasOwnProperty('chat') ? msg.chat.id : msg.from.id
+  return msg.hasOwnProperty('chat') ? msg.chat.id : msg.from.id
+}
+
+function GetUsername(msg) {
+  return msg.hasOwnProperty('chat') ? msg.chat.username : msg.from.username
 }
