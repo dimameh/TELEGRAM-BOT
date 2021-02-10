@@ -76,7 +76,7 @@ const MessageReplys = new Map()
 
 MessageReplys.set(ChatStates.Greetings, {        
 text: `
-Здравствуйте [Елена]!
+Здравствуйте %Name%!
 
 Я ваш личный бот-помощник. Готов ответить на все вопросы возникшие по курсу TikTok для бизнеса.
 
@@ -115,6 +115,7 @@ text: `
   buttons: [
     [{ text: ChatStates.GetChecklist, }],
     [{ text: ChatStates.Enroll, }],
+    [{ text: ChatStates.Question, }],
   ]
 })
 
@@ -135,6 +136,7 @@ text: `
 `,
   buttons: [
     [{ text: ChatStates.DownloadProgram, }],
+    [{ text: ChatStates.Question, }],
   ]
 })
 
@@ -146,7 +148,8 @@ PDF-файл Чек-лист “Как создавать продающий к�
 (Подробная информация о спикерах)
   `,
     buttons: [
-      [{ text: ChatStates.Enroll }, { text: ChatStates.Question  } ],
+      [{ text: ChatStates.Enroll }], 
+      [{ text: ChatStates.Question  }],
     ]
 })
 
@@ -172,6 +175,7 @@ try {
 
 bot.on('message', msg => {
   let answer = msg.text
+  let chat = GetChat(msg)
   let username = '@' + GetUsername(msg)
   switch (answer) {
     case 'start': // 1 Здравствуйте { скачать программу курса, задать вопрос, записаться на курс }
@@ -205,11 +209,12 @@ bot.on('message', msg => {
       if (EnrollingNow.indexOf(username) !== -1) {
         //Берем данные и кладем в БД
         UploadToAirtable(username, answer, AirtableDataTypes.Data)
-        DownloadProgramReply(msg)
+        bot.sendMessage(chat, 'Спасибо за вашу заявку, в течение суток с вами свяжется эксперт, с которым вы сможете обсудить вопросы оплаты и заключения договора. Ждем вас на курсе TikTok для бизнеса')
       }
       if (QuestioningNow.indexOf(username) !== -1) {
         //Если вопрос то кладем в таблицу вопросов
         UploadToAirtable(username, answer, AirtableDataTypes.Question)
+        bot.sendMessage(chat, 'Спасибо за вопрос, в ближайшее время с вами свяжутся и проконсультируют по вашему вопросу.')
       }
       cleanUserStage(username)
       break
@@ -231,8 +236,9 @@ function GreetingsReply(msg) {
         }), 
         parse_mode: 'Markdown'
     };
-    let chat = GetChat(msg);
-    bot.sendMessage(chat, arr.text, options)
+    let chat = GetChat(msg)
+    let text = arr.text.replace('%Name%', msg.hasOwnProperty('chat') ? msg.chat.first_name : msg.from.first_name)
+    bot.sendMessage(chat, text, options)
 }
 
 // 2 Скачать программу курса { получить бесплытный чек-лист, записаться на курс }
