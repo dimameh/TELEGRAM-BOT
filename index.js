@@ -351,5 +351,9 @@ function GetChat(msg) {
 }
 
 function GetUsername(msg) {
-  return msg.hasOwnProperty('chat') ? msg.chat.username : msg.from.username
+  if(msg.from && msg.from.username) {
+    return msg.from.username
+  } else {
+    return msg.chat.username
+  }
 }
